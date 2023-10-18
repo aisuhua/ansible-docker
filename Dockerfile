@@ -1,36 +1,34 @@
-FROM willhallonline/ansible:2.15-bullseye
+FROM willhallonline/ansible:2.15.2-alpine-3.16
 
-ARG DEBIAN_FRONTEND=noninteractive
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk add --no-cache vim \
+  busybox-extras \
+  iputils \
+  curl \
+  tzdata \
+  musl-locales \
+  musl-locales-lang
 
-#RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list \
-#&& sed -i s@/security.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list \ 
-#&& sed -i -e 's/^APT/# APT/' -e 's/^DPkg/# DPkg/' /etc/apt/apt.conf.d/docker-clean \
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
-&& sed -i 's/http:/https:/g' /etc/apt/sources.list \
-&& apt-get update \
-&& apt-get install -y \
-    tzdata \
-    locales \
-    vim \
-    net-tools \
-    curl \
-    wget
+RUN cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+&& echo "Asia/Shanghai" >  /etc/timezone \
+&& echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
-# Set timezone
-RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-
-# Set the locale
-RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL C.UTF-8
+ENV LANGUAGE en_US:UTF-8
+ENV LC_ALL en_US.UTF-8
 
-RUN echo 'set tabstop=2 \n\
+# Fix kylin lvol bug: https://www.kancloud.cn/desktop/lv200/2690174
+RUN sed -i 's/r"LVM version:.*"/r"LVM version:\\s+(\\d+)\.(\\d+)\.(\\d+).*(\\d{4}-{0,1}\\d{2}-{0,1}\\d{2})"/g' \
+  /usr/lib/python3.10/site-packages/ansible_collections/community/general/plugins/modules/lvol.py
+
+RUN echo $'set tabstop=2 \n\
 set shiftwidth=2 \n\
 set autoindent \n\
 set expandtab \n\
 set softtabstop=0 \n\
-set mouse-=a \n\
-set encoding=utf-8 \n\ 
+set encoding=utf-8 \n\
 set fileencoding=utf-8 \n\
-set termencoding=utf-8' >> /etc/vim/vimrc.local
+set termencoding=utf-8 \n\
+set mouse-=a' >> ~/.vimrc
+
+WORKDIR /opt/www/ansible
